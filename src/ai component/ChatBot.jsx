@@ -75,7 +75,8 @@ const ChatBot = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen max-w-4xl mx-auto bg-gradient-to-br from-slate-50 to-blue-50 shadow-2xl rounded-lg overflow-hidden">
+    <div className="flex flex-col min-h-screen max-w-4xl mx-auto bg-gradient-to-br from-slate-50 to-blue-50 shadow-2xl rounded-lg 
+    overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 text-white p-6 shadow-lg">
         <div className="flex items-center gap-3">
