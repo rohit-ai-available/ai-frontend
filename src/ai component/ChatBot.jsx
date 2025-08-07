@@ -24,6 +24,19 @@ const ChatBot = () => {
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
+     
+        const userMessage = {
+      id: messages.length + 1,
+      text: inputMessage,
+      isBot: false,
+      timestamp: new Date()
+    };
+
+    // Add user message to chat
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+ 
+    
     let obj={inputMessage:inputMessage}
        let url = server_url+"/chat";
               setIsLoading(true);
@@ -34,20 +47,9 @@ const ChatBot = () => {
                 // alert(JSON.stringify("message   " +resp.data.reply))
               }
               else{
-                alert(resp.data)
+                alert("Network issue")
               }
              let msgdata=resp.data.reply;
-    const userMessage = {
-      id: messages.length + 1,
-      text: inputMessage,
-      isBot: false,
-      timestamp: new Date()
-    };
-
-    // Add user message to chat
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-
       const botMessage = {
         id: messages.length + 2,
         text: msgdata,
