@@ -35,7 +35,7 @@ const ChatBot = () => {
     // Add user message to chat
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
- 
+    // alert("yess")
     
     let obj={inputMessage:inputMessage}
        let url = server_url+"/chat";
