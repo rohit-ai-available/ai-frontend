@@ -21,7 +21,7 @@ const CodeBlock = ({ language, value }) => {
   };
 
   return (
-    <div className="relative group rounded-lg overflow-hidden my-3 shadow-sm max-w-full text-xs md:text-sm border border-slate-700/50">
+    <div className="relative group rounded-lg overflow-hidden my-3 shadow-sm w-full border border-slate-700/50">
       <div className="flex items-center justify-between px-4 py-1.5 bg-slate-800 text-slate-400 font-mono text-[11px] select-none border-b border-slate-700/50">
         <span>{language || 'code'}</span>
         <button
@@ -42,14 +42,16 @@ const CodeBlock = ({ language, value }) => {
         </button>
       </div>
 
-      <SyntaxHighlighter
-        style={vscDarkPlus}
-        language={language}
-        PreTag="div"
-        customStyle={{ margin: 0, padding: '1rem', background: '#1e1e1e' }}
-      >
-        {value}
-      </SyntaxHighlighter>
+      <div className="w-full overflow-x-auto">
+        <SyntaxHighlighter
+          style={vscDarkPlus}
+          language={language}
+          PreTag="div"
+          customStyle={{ margin: 0, padding: '1rem', background: '#1e1e1e' }}
+        >
+          {value}
+        </SyntaxHighlighter>
+      </div>
     </div>
   );
 };
@@ -165,8 +167,6 @@ const ChatBot = () => {
     setInputMessage('');
     setIsLoading(true);
     
-    // FRONTEND FAIL-SAFE: Filter out the hardcoded system greeting if it sits at index 0.
-    // This provides fallback security so Gemini never errors out if backend checks are bypassed.
     let cleanHistoryForPayload = [...updatedMessages];
     if (cleanHistoryForPayload.length > 0 && cleanHistoryForPayload[0].isBot === true) {
       cleanHistoryForPayload.shift();
@@ -174,7 +174,7 @@ const ChatBot = () => {
 
     let obj = { 
       inputMessage: messageToQuery,
-      chatHistory: JSON.stringify(cleanHistoryForPayload) // Securely bundled data
+      chatHistory: JSON.stringify(cleanHistoryForPayload)
     };
     let url = server_url + "/chat";
 
@@ -226,9 +226,9 @@ const ChatBot = () => {
   };
 
   return (
-    /* MAIN CONTAINER */
-    <div className={`flex h-screen w-full max-w-6xl mx-auto shadow-xl md:rounded-xl overflow-hidden relative border transition-colors duration-300 ${
-      darkMode ? 'bg-slate-950 text-slate-100 border-slate-800' : 'bg-white text-slate-800 border-slate-200'
+    /* MAIN CONTAINER: Optimized to scale beautifully from viewport widths on standard laptops up to 4K monitors */
+    <div className={`flex h-screen w-full overflow-hidden relative border-none transition-colors duration-300 ${
+      darkMode ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-800'
     }`}>
       
       {/* SIDEBAR COMPONENT */}
@@ -242,7 +242,7 @@ const ChatBot = () => {
           </button>
         </div>
 
-        <div className="p-4">
+        <div className="p-4 flex-shrink-0">
           <button 
             onClick={handleNewChat}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-medium rounded-lg transition-all duration-150 shadow-sm transform active:scale-[0.98]"
@@ -282,7 +282,7 @@ const ChatBot = () => {
       )}
 
       {/* MAIN CONVERSATION COMPONENT LAYOUT SPACE */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden w-full">
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 w-full">
         {/* Header Module Navbar */}
         <div className={`p-4 md:px-6 md:py-4 shadow-sm flex-shrink-0 flex items-center justify-between border-b transition-colors duration-300 ${
           darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
@@ -310,7 +310,7 @@ const ChatBot = () => {
 
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className={`p-2 rounded-lg border transition-all duration-150 active:scale-95 ${
+            className={`p-2 rounded-lg border transition-all duration-150 active:scale-95 flex-shrink-0 ${
               darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-white border-slate-200 hover:bg-slate-100'
             }`}
             title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -326,7 +326,7 @@ const ChatBot = () => {
           {activeSession.messages.map((message) => (
             <div
               key={message.id}
-              className={`flex items-start gap-3 ${
+              className={`flex items-start gap-3 w-full ${
                 message.isBot ? 'justify-start' : 'justify-end'
               } animate-in fade-in-50 duration-200`}
             >
@@ -339,7 +339,7 @@ const ChatBot = () => {
               )}
               
               <div
-                className={`max-w-[85%] md:max-w-[78%] px-4 py-2.5 rounded-xl border shadow-sm overflow-x-auto ${
+                className={`max-w-[88%] md:max-w-[80%] px-4 py-2.5 rounded-xl border shadow-sm overflow-hidden min-w-0 ${
                   message.isBot
                     ? darkMode 
                       ? 'bg-slate-900 border-slate-800/80 text-slate-100' 
@@ -349,7 +349,7 @@ const ChatBot = () => {
                       : 'bg-slate-800 border-slate-900 text-slate-100'
                 }`}
               >
-                <div className="text-sm leading-relaxed font-normal transition-all">
+                <div className="text-sm leading-relaxed font-normal transition-all w-full overflow-hidden">
                   {message.text && message.text.startsWith('data:image') ? (
                     <div className={`my-1 max-w-full overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
                       <img 
@@ -360,36 +360,40 @@ const ChatBot = () => {
                       />
                     </div>
                   ) : (
-                    <ReactMarkdown 
-                      components={{
-                        p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
-                        ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
-                        ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
-                        li: ({node, ...props}) => <li className="text-sm" {...props} />,
-                        h1: ({node, ...props}) => <h1 className="text-base font-bold mb-1.5 mt-1 text-inherit" {...props} />,
-                        h2: ({node, ...props}) => <h2 className="text-sm font-bold mb-1.5 mt-1 text-inherit" {...props} />,
-                        code: ({node, inline, className, children, ...props}) => {
-                          const match = /language-(\w+)/.exec(className || '');
-                          const rawCodeString = String(children).replace(/\n$/, '');
-                          
-                          return !inline && match ? (
-                            <CodeBlock 
-                              language={match[1]} 
-                              value={rawCodeString} 
-                              {...props} 
-                            />
-                          ) : (
-                            <code className={`px-1.5 py-0.5 rounded font-mono text-xs md:text-sm break-all font-medium ${
-                              darkMode ? 'bg-slate-950 text-emerald-400' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                            }`} {...props}>
-                              {children}
-                            </code>
-                          );
-                        }
-                      }}
-                    >
-                      {message.text}
-                    </ReactMarkdown>
+                    <div className="w-full overflow-hidden min-w-0">
+                      <ReactMarkdown 
+                        components={{
+                          p: ({node, ...props}) => <p className="mb-2 last:mb-0 break-words" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
+                          ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
+                          li: ({node, ...props}) => <li className="text-sm break-words" {...props} />,
+                          h1: ({node, ...props}) => <h1 className="text-base font-bold mb-1.5 mt-1 text-inherit" {...props} />,
+                          h2: ({node, ...props}) => <h2 className="text-sm font-bold mb-1.5 mt-1 text-inherit" {...props} />,
+                          code: ({node, inline, className, children, ...props}) => {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const rawCodeString = String(children).replace(/\n$/, '');
+                            
+                            return !inline && match ? (
+                              <div className="w-full min-w-full max-w-full overflow-hidden">
+                                <CodeBlock 
+                                  language={match[1]} 
+                                  value={rawCodeString} 
+                                  {...props} 
+                                />
+                              </div>
+                            ) : (
+                              <code className={`px-1.5 py-0.5 rounded font-mono text-xs md:text-sm break-all font-medium ${
+                                darkMode ? 'bg-slate-950 text-emerald-400' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              }`} {...props}>
+                                {children}
+                              </code>
+                            );
+                          }
+                        }}
+                      >
+                        {message.text}
+                      </ReactMarkdown>
+                    </div>
                   )}
                 </div>
 
@@ -414,23 +418,23 @@ const ChatBot = () => {
 
           {/* Wait Loader Widget */}
           {isLoading && (
-            <div className="flex items-start gap-3 animate-in fade-in-50 duration-200">
+            <div className="flex items-start gap-3 animate-in fade-in-50 duration-200 w-full justify-start">
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 border shadow-sm ${
                 darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-500'
               }`}>
                 <Bot className="w-4 h-4" />
               </div>
-              <div className={`border rounded-xl px-4 py-2.5 shadow-sm transition-colors duration-300 ${
+              <div className={`border rounded-xl px-4 py-2.5 shadow-sm transition-colors duration-300 max-w-[88%] md:max-w-[80%] ${
                 darkMode ? 'bg-slate-900 border-slate-800/80' : 'bg-white border-slate-200'
               }`}>
-                <div className="flex items-center gap-2.5">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
-                  <div className="flex gap-1 select-none">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400 flex-shrink-0" />
+                  <div className="flex gap-1 select-none flex-shrink-0">
                     <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
                     <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                     <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                   </div>
-                  <span className={`text-xs font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Processing request...</span>
+                  <span className={`text-xs font-medium truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Processing request...</span>
                 </div>
               </div>
             </div>
@@ -443,15 +447,15 @@ const ChatBot = () => {
         <div className={`border-t p-4 md:px-6 md:py-4 flex-shrink-0 transition-colors duration-300 ${
           darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
         }`}>
-          <div className="flex items-end gap-2 md:gap-3">
-            <div className="flex-1 relative">
+          <div className="flex items-end gap-2 md:gap-3 w-full">
+            <div className="flex-1 relative min-w-0">
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Send a message..."
                 disabled={isLoading}
-                className={`w-full px-3.5 py-2.5 border rounded-xl resize-none focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 disabled:cursor-not-allowed transition-all duration-150 text-sm ${
+                className={`w-full px-3.5 py-2.5 border rounded-xl resize-none focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 disabled:cursor-not-allowed transition-all duration-150 text-sm block ${
                   darkMode 
                     ? 'bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 disabled:bg-slate-900' 
                     : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 disabled:bg-slate-50'
@@ -474,8 +478,8 @@ const ChatBot = () => {
           </div>
           
           <p className={`text-[10px] mt-2 flex items-center gap-1.5 select-none ${darkMode ? 'text-slate-600' : 'text-slate-400'}`}>
-            <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
-            Press Enter to send, Shift+Enter for line break
+            <span className="w-1 h-1 bg-emerald-500 rounded-full flex-shrink-0"></span>
+            <span>Press Enter to send, Shift+Enter for line break</span>
           </p>
         </div>
       </div>
@@ -483,4 +487,4 @@ const ChatBot = () => {
   );
 };
 
-export default ChatBot;``
+export default ChatBot;
