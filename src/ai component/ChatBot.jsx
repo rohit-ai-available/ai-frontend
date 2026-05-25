@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Plus, MessageSquare, Menu, X, Check, Copy, Sun, Moon } from 'lucide-react';
+import { Send, Bot, User, Loader2, Plus, MessageSquare, Menu, X, Check, Copy, Sun, Moon, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown'; 
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -53,6 +53,63 @@ const CodeBlock = ({ language, value }) => {
         </SyntaxHighlighter>
       </div>
     </div>
+  );
+};
+
+// MINI COMPONENT: Processes the stream text block safely and returns plain text to Markdown parser
+const TypewriterMarkdown = ({ text, onComplete, darkMode }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const indexRef = useRef(0);
+  const fullTextRef = useRef(text);
+
+  useEffect(() => {
+    fullTextRef.current = text;
+  }, [text]);
+
+  useEffect(() => {
+    const speed = text.length > 500 ? 5 : 15; 
+    const interval = setInterval(() => {
+      if (indexRef.current < fullTextRef.current.length) {
+        setDisplayedText(fullTextRef.current.substring(0, indexRef.current + 1));
+        indexRef.current += 1;
+      } else {
+        clearInterval(interval);
+        if (onComplete) onComplete();
+      }
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <ReactMarkdown 
+      components={{
+        p: ({node, ...props}) => <p className="mb-2 last:mb-0 break-words" {...props} />,
+        ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
+        ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
+        li: ({node, ...props}) => <li className="text-sm break-words" {...props} />,
+        h1: ({node, ...props}) => <h1 className="text-base font-bold mb-1.5 mt-1 text-inherit" {...props} />,
+        h2: ({node, ...props}) => <h2 className="text-sm font-bold mb-1.5 mt-1 text-inherit" {...props} />,
+        code: ({node, inline, className, children, ...props}) => {
+          const match = /language-(\w+)/.exec(className || '');
+          const rawCodeString = String(children).replace(/\n$/, '');
+          
+          return !inline && match ? (
+            <div className="w-full min-w-full max-w-full overflow-hidden">
+              <CodeBlock language={match[1]} value={rawCodeString} {...props} />
+            </div>
+          ) : (
+            <code className={`px-1.5 py-0.5 rounded font-mono text-xs md:text-sm break-all font-medium ${
+              darkMode ? 'bg-slate-950 text-emerald-400' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+            }`} {...props}>
+              {children}
+            </code>
+          );
+        }
+      }}
+    >
+      {displayedText}
+    </ReactMarkdown>
   );
 };
 
@@ -135,6 +192,36 @@ const ChatBot = () => {
     setIsSidebarOpen(false);
   };
 
+  const handleDeleteChat = (sessionId, e) => {
+    e.stopPropagation(); 
+    
+    if (sessions.length === 1) {
+      const resetId = Date.now();
+      const defaultSession = {
+        id: resetId,
+        title: "Default Conversation",
+        messages: [
+          {
+            id: resetId + 1,
+            text: "Hello! I'm your AI assistant. How can I help you today?",
+            isBot: true,
+            timestamp: new Date()
+          }
+        ]
+      };
+      setSessions([defaultSession]);
+      setActiveSessionId(resetId);
+      return;
+    }
+
+    const filteredSessions = sessions.filter(session => session.id !== sessionId);
+    setSessions(filteredSessions);
+
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(filteredSessions[0].id);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
       
@@ -188,7 +275,8 @@ const ChatBot = () => {
           id: Date.now() + 1,
           text: resp.data.reply,
           isBot: true,
-          timestamp: new Date()
+          timestamp: new Date(),
+          isStreaming: true 
         };
 
         setSessions(prev => prev.map(session => {
@@ -226,7 +314,6 @@ const ChatBot = () => {
   };
 
   return (
-    /* MAIN CONTAINER: Optimized to scale beautifully from viewport widths on standard laptops up to 4K monitors */
     <div className={`flex h-screen w-full overflow-hidden relative border-none transition-colors duration-300 ${
       darkMode ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-800'
     }`}>
@@ -254,21 +341,33 @@ const ChatBot = () => {
 
         <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
           {sessions.map((session) => (
-            <button
+            <div
               key={session.id}
-              onClick={() => {
-                setActiveSessionId(session.id);
-                setIsSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all duration-150 truncate ${
+              className={`group w-full flex items-center justify-between rounded-lg text-left text-sm font-medium transition-all duration-150 pr-2 ${
                 session.id === activeSessionId
                   ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50'
                   : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
               }`}
             >
-              <MessageSquare className="w-4 h-4 flex-shrink-0 text-slate-500" />
-              <span className="truncate flex-1">{session.title}</span>
-            </button>
+              <button
+                onClick={() => {
+                  setActiveSessionId(session.id);
+                  setIsSidebarOpen(false);
+                }}
+                className="flex-1 flex items-center gap-2.5 px-3 py-2.5 min-w-0 text-left"
+              >
+                <MessageSquare className="w-4 h-4 flex-shrink-0 text-slate-500" />
+                <span className="truncate">{session.title}</span>
+              </button>
+              
+              <button
+                onClick={(e) => handleDeleteChat(session.id, e)}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-slate-700 text-slate-500 hover:text-rose-400 transition-all duration-150"
+                title="Delete Chat"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           ))}
         </div>
       </div>
@@ -361,38 +460,49 @@ const ChatBot = () => {
                     </div>
                   ) : (
                     <div className="w-full overflow-hidden min-w-0">
-                      <ReactMarkdown 
-                        components={{
-                          p: ({node, ...props}) => <p className="mb-2 last:mb-0 break-words" {...props} />,
-                          ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
-                          ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
-                          li: ({node, ...props}) => <li className="text-sm break-words" {...props} />,
-                          h1: ({node, ...props}) => <h1 className="text-base font-bold mb-1.5 mt-1 text-inherit" {...props} />,
-                          h2: ({node, ...props}) => <h2 className="text-sm font-bold mb-1.5 mt-1 text-inherit" {...props} />,
-                          code: ({node, inline, className, children, ...props}) => {
-                            const match = /language-(\w+)/.exec(className || '');
-                            const rawCodeString = String(children).replace(/\n$/, '');
-                            
-                            return !inline && match ? (
-                              <div className="w-full min-w-full max-w-full overflow-hidden">
-                                <CodeBlock 
-                                  language={match[1]} 
-                                  value={rawCodeString} 
-                                  {...props} 
-                                />
-                              </div>
-                            ) : (
-                              <code className={`px-1.5 py-0.5 rounded font-mono text-xs md:text-sm break-all font-medium ${
-                                darkMode ? 'bg-slate-950 text-emerald-400' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                              }`} {...props}>
-                                {children}
-                              </code>
-                            );
-                          }
-                        }}
-                      >
-                        {message.text}
-                      </ReactMarkdown>
+                      {message.isStreaming ? (
+                        <TypewriterMarkdown 
+                          text={message.text} 
+                          darkMode={darkMode}
+                          onComplete={() => {
+                            setSessions(prev => prev.map(session => ({
+                              ...session,
+                              messages: session.messages.map(msg => 
+                                msg.id === message.id ? { ...msg, isStreaming: false } : msg
+                              )
+                            })));
+                          }} 
+                        />
+                      ) : (
+                        <ReactMarkdown 
+                          components={{
+                            p: ({node, ...props}) => <p className="mb-2 last:mb-0 break-words" {...props} />,
+                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2 space-y-1 text-inherit/90" {...props} />,
+                            li: ({node, ...props}) => <li className="text-sm break-words" {...props} />,
+                            h1: ({node, ...props}) => <h1 className="text-base font-bold mb-1.5 mt-1 text-inherit" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-sm font-bold mb-1.5 mt-1 text-inherit" {...props} />,
+                            code: ({node, inline, className, children, ...props}) => {
+                              const match = /language-(\w+)/.exec(className || '');
+                              const rawCodeString = String(children).replace(/\n$/, '');
+                              
+                              return !inline && match ? (
+                                <div className="w-full min-w-full max-w-full overflow-hidden">
+                                  <CodeBlock language={match[1]} value={rawCodeString} {...props} />
+                                </div>
+                              ) : (
+                                <code className={`px-1.5 py-0.5 rounded font-mono text-xs md:text-sm break-all font-medium ${
+                                  darkMode ? 'bg-slate-950 text-emerald-400' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                }`} {...props}>
+                                  {children}
+                                </code>
+                              );
+                            }
+                          }}
+                        >
+                          {message.text}
+                        </ReactMarkdown>
+                      )}
                     </div>
                   )}
                 </div>
